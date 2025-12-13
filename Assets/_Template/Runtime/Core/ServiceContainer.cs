@@ -1,5 +1,3 @@
-// ServiceContainer.cs
-
 using System;
 using System.Collections.Generic;
 
@@ -14,16 +12,15 @@ namespace ZXTemplate.Core
             _services[typeof(T)] = service ?? throw new ArgumentNullException(nameof(service));
         }
 
-        public static T GetT<T>() where T : class
+        public static T Get<T>() where T : class
         {
             if (_services.TryGetValue(typeof(T), out var obj))
-            {
                 return (T)obj;
-            }
-            throw new InvalidOperationException($"Service not found: {typeof(T).Name}");
+
+            throw new Exception($"Service not found: {typeof(T).Name}");
         }
 
-        public static bool TryGetT<T>(out T service) where T : class
+        public static bool TryGet<T>(out T service) where T : class
         {
             if (_services.TryGetValue(typeof(T), out var obj))
             {
@@ -35,6 +32,5 @@ namespace ZXTemplate.Core
         }
 
         public static void Clear() => _services.Clear();
-
     }
 }
