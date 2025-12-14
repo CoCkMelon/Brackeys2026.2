@@ -12,7 +12,7 @@ namespace ZXTemplate.Audio
         private readonly AudioSource _bgm;
         private readonly AudioSource _sfx;
 
-        public AudioService(AudioMixer mixer, AudioLibrary library)
+        public AudioService(AudioMixer mixer, AudioLibrary library, AudioMixerGroup bgmGroup, AudioMixerGroup sfxGroup)
         {
             _mixer = mixer;
             _library = library;
@@ -22,14 +22,21 @@ namespace ZXTemplate.Audio
 
             _bgm = _root.AddComponent<AudioSource>();
             _bgm.loop = true;
+            _bgm.playOnAwake = false;
+            _bgm.outputAudioMixerGroup = bgmGroup;
 
             _sfx = _root.AddComponent<AudioSource>();
+            _sfx.playOnAwake = false;
+            _sfx.outputAudioMixerGroup = sfxGroup;
         }
 
         public void PlayBGM(string id)
         {
             var clip = _library.Find(id);
             if (clip == null) return;
+
+            if (_bgm.clip == clip && _bgm.isPlaying) return;
+
             _bgm.clip = clip;
             _bgm.Play();
         }
@@ -45,7 +52,6 @@ namespace ZXTemplate.Audio
 
         public void SetMixerVolume(string exposedParam, float volume01)
         {
-            // volume01: 0..1 -> dB (-80..0)
             var db = Mathf.Lerp(-80f, 0f, Mathf.Clamp01(volume01));
             _mixer.SetFloat(exposedParam, db);
         }

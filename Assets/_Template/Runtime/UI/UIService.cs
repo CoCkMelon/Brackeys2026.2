@@ -7,8 +7,10 @@ namespace ZXTemplate.UI
 
         public UIService(UIRoot root) => Root = root;
 
-        public void Push(UIWindow windowPrefab) => Root.Stack.Push(windowPrefab);
+        public UIWindow
+            Push(UIWindow windowPrefab) => Root.Stack.Push(windowPrefab);
         public void Pop() => Root.Stack.Pop();
+        public void Clear() => Root.Stack.Clear();
         public void ShowLoading(bool show)
         {
             if (Root.Loading == null) return;

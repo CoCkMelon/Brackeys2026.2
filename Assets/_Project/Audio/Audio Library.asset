@@ -15,5 +15,7 @@ MonoBehaviour:
   clips:
   - id: bgm_menu
     clip: {fileID: 0}
+  - id: bgm_game
+    clip: {fileID: 0}
   - id: sfx_click
     clip: {fileID: 0}

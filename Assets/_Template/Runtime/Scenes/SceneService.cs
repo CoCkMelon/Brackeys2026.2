@@ -12,6 +12,7 @@ namespace ZXTemplate.Scenes
 
         public async Task LoadSceneAsync(string sceneName)
         {
+            _ui.Clear();
             _ui.ShowLoading(true);
 
             var op = SceneManager.LoadSceneAsync(sceneName);
@@ -21,6 +22,9 @@ namespace ZXTemplate.Scenes
                 await Task.Yield();
 
             _ui.ShowLoading(false);
+
+            UnityEngine.Debug.Log("Active Scene = " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+
         }
     }
 }

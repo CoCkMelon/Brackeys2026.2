@@ -18,7 +18,10 @@ namespace ZXTemplate.Core
 
         [Header("Audio")]
         [SerializeField] private UnityEngine.Audio.AudioMixer audioMixer;
-        [SerializeField] private AudioLibrary audioLibrary;
+        [SerializeField] private ZXTemplate.Audio.AudioLibrary audioLibrary;
+        [SerializeField] private UnityEngine.Audio.AudioMixerGroup bgmGroup;
+        [SerializeField] private UnityEngine.Audio.AudioMixerGroup sfxGroup;
+
 
         private void Awake()
         {
@@ -36,7 +39,7 @@ namespace ZXTemplate.Core
             var saveService = new JsonSaveService();
 
             // 3) Audio service (depends on UI? no)
-            var audioService = new AudioService(audioMixer, audioLibrary);
+            var audioService = new AudioService(audioMixer, audioLibrary, bgmGroup, sfxGroup);
 
             // Register
             ServiceContainer.Register<IUIService>(uiService);
@@ -45,6 +48,13 @@ namespace ZXTemplate.Core
             ServiceContainer.Register<IInputService>(inputService);
             ServiceContainer.Register<ISaveService>(saveService);
             ServiceContainer.Register<IAudioService>(audioService);
+
+            var save = ServiceContainer.Get<ZXTemplate.Save.ISaveService>();
+            if (!save.TryLoad(SettingsKeys.Audio, out SettingsData data) || data == null)
+                data = new SettingsData();
+
+            SettingsApplier.ApplyAudio(data);
+
         }
 
         private void OnDestroy()

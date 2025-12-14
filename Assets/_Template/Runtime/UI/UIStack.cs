@@ -7,7 +7,7 @@ namespace ZXTemplate.UI
     {
         private readonly Stack<UIWindow> _stack = new();
 
-        public void Push(UIWindow windowPrefab)
+        public UIWindow Push(UIWindow windowPrefab)
         {
             var instance = Instantiate(windowPrefab, transform);
             if (_stack.TryPeek(out var top))
@@ -15,6 +15,7 @@ namespace ZXTemplate.UI
 
             _stack.Push(instance);
             instance.OnPushed();
+            return instance;
         }
 
         public void Pop()
