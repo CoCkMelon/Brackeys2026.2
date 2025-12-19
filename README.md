@@ -1,10 +1,10 @@
-# Unity Template (Course-Friendly)
+# Unity Template
 
-A lightweight Unity template for school/course projects.  
+A lightweight Unity template for beginner projects.  
 Focus: clean structure, small modules, easy to copy, easy to delete.
 
 ## Requirements
-- Unity: 2022 LTS / Unity 6 (6000+)  
+- Unity: Unity 6.3 
 - Input: New Input System (recommended) or Both  
 - UI: UGUI  
 - TextMeshPro for UI text  
