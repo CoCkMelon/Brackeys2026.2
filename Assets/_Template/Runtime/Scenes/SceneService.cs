@@ -12,6 +12,7 @@ namespace ZXTemplate.Scenes
 
         public async Task LoadSceneAsync(string sceneName)
         {
+            _ui.ClearOverlay();
             _ui.Clear();
             _ui.ShowLoading(true);
 
