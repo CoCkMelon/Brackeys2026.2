@@ -2,10 +2,22 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using ZXTemplate.Core;
 
 namespace ZXTemplate.UI
 {
+    /// <summary>
+    /// A reusable confirm dialog window.
+    ///
+    /// Features:
+    /// - Title + message
+    /// - Confirm / Cancel buttons with custom labels
+    /// - Optional timeout (uses unscaled time so it still counts down during pause)
+    ///
+    /// Usage pattern:
+    /// - Created and pushed by ConfirmService.
+    /// - Caller provides onConfirm/onCancel actions.
+    /// - This window pops itself from the UI stack after an action.
+    /// </summary>
     public class ConfirmDialogWindow : UIWindow
     {
         [Header("UI")]
@@ -26,6 +38,11 @@ namespace ZXTemplate.UI
         private bool _timeoutAsCancel;
         private bool _running;
 
+        /// <summary>
+        /// Initializes dialog contents and callbacks.
+        /// timeoutSeconds <= 0 disables timeout.
+        /// timeoutAsCancel = true means timeout triggers Cancel; otherwise triggers Confirm.
+        /// </summary>
         public void Setup(
             string title, string message,
             string confirmText, string cancelText,
@@ -51,6 +68,7 @@ namespace ZXTemplate.UI
         {
             _running = true;
 
+            // Bind UI events here (instead of OnEnable) so UIStack hide/show is safe.
             confirmButton.onClick.AddListener(Confirm);
             cancelButton.onClick.AddListener(Cancel);
         }
@@ -59,6 +77,7 @@ namespace ZXTemplate.UI
         {
             _running = false;
 
+            // Always unbind to avoid leaking listeners.
             confirmButton.onClick.RemoveListener(Confirm);
             cancelButton.onClick.RemoveListener(Cancel);
         }
@@ -68,12 +87,12 @@ namespace ZXTemplate.UI
             if (!_running) return;
             if (_timeout <= 0f) return;
 
+            // Use unscaled time so countdown still works when game is paused (Time.timeScale = 0).
             _timeout -= Time.unscaledDeltaTime;
             UpdateTimerLabel(_timeout);
 
             if (_timeout <= 0f)
             {
-                // timeout -> treat as cancel by default
                 if (_timeoutAsCancel) Cancel();
                 else Confirm();
             }
@@ -92,21 +111,20 @@ namespace ZXTemplate.UI
         private void Confirm()
         {
             _onConfirm?.Invoke();
-            ServiceContainer.Get<IToastService>().Show("Display changed", 2f);
             CloseSelf();
         }
 
         private void Cancel()
         {
             _onCancel?.Invoke();
-            ServiceContainer.Get<IToastService>().Show("Display reverted", 2f);
             CloseSelf();
         }
 
         private void CloseSelf()
         {
-            // use UI stack
-            ServiceContainer.Get<IUIService>().Pop();
+            // Confirm dialog is always pushed onto UI stack, so pop it to close.
+            // (UIService/Stack owns the lifetime of the window instance.)
+            ZXTemplate.Core.ServiceContainer.Get<IUIService>().Pop();
         }
     }
 }

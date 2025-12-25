@@ -4,6 +4,21 @@ using ZXTemplate.Core;
 using ZXTemplate.Input;
 using ZXTemplate.UI;
 
+/// <summary>
+/// Pause menu window (modal, on UIStack).
+///
+/// Behavior on open:
+/// - Acquire a pause token (Time.timeScale -> 0)
+/// - Acquire an input mode token (force UI action map)
+///
+/// Behavior on close:
+/// - Release both tokens to restore previous state.
+///   (If other systems are also pausing / forcing UI mode, their tokens keep it paused/UI.)
+///
+/// Buttons:
+/// - Resume: closes this window (Pop)
+/// - Settings: opens SettingsWindow on top of pause menu
+/// </summary>
 public class PauseMenuWindow : UIWindow
 {
     [SerializeField] private Button resumeButton;
@@ -11,7 +26,6 @@ public class PauseMenuWindow : UIWindow
     [SerializeField] private SettingsWindow settingsWindowPrefab;
 
     private IPauseService _pause;
-    //private IInputService _input;
     private IInputModeService _inputMode;
 
     private object _pauseToken;
@@ -20,17 +34,16 @@ public class PauseMenuWindow : UIWindow
     public override void OnPushed()
     {
         _pause = ServiceContainer.Get<IPauseService>();
-        //_input = ServiceContainer.Get<IInputService>();
         _inputMode = ServiceContainer.Get<IInputModeService>();
 
-        // 获得一个暂停 token（引用计数）
+        // Acquire pause token (token-based pause prevents "pause ownership" bugs).
         _pauseToken = _pause.Acquire("PauseMenu");
-        //_input.EnableUI();
+
+        // Force UI input while the menu is open.
         _inputToken = _inputMode.Acquire(InputMode.UI, "PauseMenu");
 
         resumeButton.onClick.AddListener(Resume);
         settingsButton.onClick.AddListener(OpenSettings);
-
     }
 
     public override void OnPopped()
@@ -38,25 +51,29 @@ public class PauseMenuWindow : UIWindow
         resumeButton.onClick.RemoveListener(Resume);
         settingsButton.onClick.RemoveListener(OpenSettings);
 
-        // 释放 token
-        _pause.Release(_pauseToken);
-        _pauseToken = null;
+        // Release tokens (safe even if other systems still hold tokens).
+        if (_pauseToken != null)
+        {
+            _pause.Release(_pauseToken);
+            _pauseToken = null;
+        }
 
-        //_input.EnableGameplay();
-        _inputMode.Release(_inputToken);
-        _inputToken = null;
-
-
+        if (_inputToken != null)
+        {
+            _inputMode.Release(_inputToken);
+            _inputToken = null;
+        }
     }
 
     private void Resume()
     {
-        // 由控制器负责 Pop（更统一），这里也可以直接 Pop
+        // Close pause menu (pop from UI stack).
         ServiceContainer.Get<IUIService>().Pop();
     }
 
     private void OpenSettings()
     {
+        // SettingsWindow will acquire its own UI/pause tokens based on its configuration.
         ServiceContainer.Get<IUIService>().Push(settingsWindowPrefab);
     }
 }

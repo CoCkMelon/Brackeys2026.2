@@ -3,6 +3,18 @@ using UnityEngine;
 
 namespace ZXTemplate.Settings
 {
+    /// <summary>
+    /// Root settings data persisted by SettingsService.
+    ///
+    /// Contains:
+    /// - Audio settings (mixer volumes + mute flags)
+    /// - Video settings (fullscreen / resolution / quality)
+    /// - Controls settings (input binding overrides)
+    ///
+    /// Versioning:
+    /// - Keep a version field for future migrations.
+    /// - initialized is used to detect first-run / corrupted saves.
+    /// </summary>
     [Serializable]
     public class SettingsData
     {
@@ -15,13 +27,22 @@ namespace ZXTemplate.Settings
         public VideoSettings video = new();
         public ControlsSettings controls = new();
 
+        /// <summary>
+        /// Clamps all sub-settings to valid ranges.
+        /// Call before applying or saving.
+        /// </summary>
         public void Clamp()
         {
             audio.Clamp();
             video.Clamp();
+            // controls: no numeric clamp needed
         }
     }
 
+    /// <summary>
+    /// Audio settings in normalized form (0..1) plus mute flags.
+    /// Actual runtime volume is applied via AudioMixer exposed parameters (dB conversion).
+    /// </summary>
     [Serializable]
     public class AudioSettings
     {
@@ -41,16 +62,25 @@ namespace ZXTemplate.Settings
         }
     }
 
+    /// <summary>
+    /// Video/display settings.
+    ///
+    /// Notes:
+    /// - We store width/height of the currently selected resolution (not an index),
+    ///   so the setting stays stable even if the available resolutions list changes
+    ///   between machines/monitors.
+    /// - qualityIndex aligns with QualitySettings.names.
+    /// </summary>
     [Serializable]
     public class VideoSettings
     {
         public bool fullscreen = true;
 
-        // 用“当前选择的分辨率”保存
+        // Store selected resolution as width/height (not dropdown index).
         public int width = 1920;
         public int height = 1080;
 
-        // 对齐 QualitySettings.names
+        // Aligns with QualitySettings.names
         public int qualityIndex = 0;
 
         public void Clamp()
@@ -63,6 +93,14 @@ namespace ZXTemplate.Settings
         }
     }
 
+    /// <summary>
+    /// Controls settings.
+    ///
+    /// bindingOverridesJson is the JSON string produced by:
+    /// InputActionAsset.SaveBindingOverridesAsJson()
+    /// and restored by:
+    /// InputActionAsset.LoadBindingOverridesFromJson(...)
+    /// </summary>
     [Serializable]
     public class ControlsSettings
     {

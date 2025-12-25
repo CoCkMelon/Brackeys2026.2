@@ -7,15 +7,26 @@ using ZXTemplate.Input;
 using ZXTemplate.Settings;
 using ZXTemplate.UI;
 
-public enum SettingsTab
-{
-    Audio,
-    Video,
-    Controls
-}
-
+/// <summary>
+/// Settings window with Apply/Cancel workflow and multiple tabs.
+/// 
+/// Key behaviors:
+/// - Snapshot on open (ExportJsonSnapshot) so Cancel can restore everything.
+/// - Apply writes settings to disk (Save) and updates the snapshot baseline.
+/// - Audio/Video changes are applied immediately for preview (ApplyAll), but not saved until Apply.
+/// - Video has a "safe revert" confirm dialog to prevent unusable resolutions/fullscreen settings.
+/// - Uses InputModeService token to force UI input while settings is open.
+/// - Optionally pauses the game while settings is open (pauseGameOnOpen).
+/// </summary>
 public class SettingsWindow : UIWindow
 {
+    public enum SettingsTab
+    {
+        Audio,
+        Video,
+        Controls
+    }
+
     [Header("Tabs")]
     [SerializeField] private Button tabAudioButton;
     [SerializeField] private Button tabVideoButton;
@@ -45,39 +56,96 @@ public class SettingsWindow : UIWindow
     [SerializeField] private TMP_Dropdown qualityDropdown;
 
     [Header("Behavior")]
+    [Tooltip("If true, timeScale/pause state will be acquired while settings is open.")]
     [SerializeField] private bool pauseGameOnOpen = false;
 
     private ISettingsService _settings;
     private IInputModeService _inputMode;
     private IPauseService _pause;
-    private string _snapshotJson;
     private IConfirmService _confirm;
+    private IToastService _toast;
+
+    // Full settings snapshot (used by Cancel / Back).
+    private string _snapshotJson;
+
+    // Video-only snapshot used by "safe revert".
     private string _confirmedVideoJson;
     private bool _videoConfirmOpen;
 
+    // Tokens for temporary state changes while the window is open.
     private object _inputToken;
     private object _pauseToken;
 
+    // Resolution dropdown cache.
     private readonly List<(int w, int h)> _resOptions = new();
+
+    // Prevent UI callbacks from writing back while we are syncing UI from data.
     private bool _ignoreEvents;
 
     public override void OnPushed()
     {
-        _settings = ServiceContainer.Get<ISettingsService>();
-        _inputMode = ServiceContainer.Get<IInputModeService>();
-        _pause = ServiceContainer.Get<IPauseService>();
+        ResolveServices();
+        AcquireTokens();
 
-        _confirm = ServiceContainer.Get<ZXTemplate.UI.IConfirmService>();
+        // Save a baseline snapshot so Cancel can revert everything.
+        _snapshotJson = _settings.ExportJsonSnapshot();
+
+        // Video safe revert baseline starts from current video settings.
         _confirmedVideoJson = JsonUtility.ToJson(_settings.Data.video);
         _videoConfirmOpen = false;
 
+        BuildDropdowns();
+        BindUIEvents();
+
+        // Initialize UI from current settings (no callbacks should run here).
+        SyncUIFromSettings();
+
+        // Default tab
+        ShowTab(SettingsTab.Audio);
+    }
+
+    public override void OnPopped()
+    {
+        UnbindUIEvents();
+        ReleaseTokens();
+    }
+
+    // -----------------------------
+    // Setup / teardown helpers
+    // -----------------------------
+    private void ResolveServices()
+    {
+        _settings = ServiceContainer.Get<ISettingsService>();
+        _inputMode = ServiceContainer.Get<IInputModeService>();
+        _pause = ServiceContainer.Get<IPauseService>();
+        _confirm = ServiceContainer.Get<IConfirmService>();
+        _toast = ServiceContainer.Get<IToastService>();
+    }
+
+    private void AcquireTokens()
+    {
+        // Force UI input while settings is open.
         _inputToken = _inputMode.Acquire(InputMode.UI, "SettingsWindow");
+
+        // Optionally pause gameplay while settings is open.
         if (pauseGameOnOpen)
             _pauseToken = _pause.Acquire("SettingsWindow");
+    }
 
-        // save snapshot
-        _snapshotJson = _settings.ExportJsonSnapshot();
+    private void ReleaseTokens()
+    {
+        if (_pauseToken != null) { _pause.Release(_pauseToken); _pauseToken = null; }
+        if (_inputToken != null) { _inputMode.Release(_inputToken); _inputToken = null; }
+    }
 
+    private void BuildDropdowns()
+    {
+        BuildResolutionOptions();
+        BuildQualityOptions();
+    }
+
+    private void BindUIEvents()
+    {
         // Tabs
         tabAudioButton.onClick.AddListener(() => ShowTab(SettingsTab.Audio));
         tabVideoButton.onClick.AddListener(() => ShowTab(SettingsTab.Video));
@@ -88,11 +156,7 @@ public class SettingsWindow : UIWindow
         applyButton.onClick.AddListener(Apply);
         cancelButton.onClick.AddListener(Cancel);
 
-        // Prepare Video dropdowns
-        BuildResolutionOptions();
-        BuildQualityOptions();
-
-        // Bind UI events
+        // Audio
         masterSlider.onValueChanged.AddListener(OnMasterChanged);
         bgmSlider.onValueChanged.AddListener(OnBgmChanged);
         sfxSlider.onValueChanged.AddListener(OnSfxChanged);
@@ -101,21 +165,20 @@ public class SettingsWindow : UIWindow
         bgmMuteToggle.onValueChanged.AddListener(OnBgmMuteChanged);
         sfxMuteToggle.onValueChanged.AddListener(OnSfxMuteChanged);
 
+        // Video
         resolutionDropdown.onValueChanged.AddListener(OnResolutionChanged);
         fullscreenToggle.onValueChanged.AddListener(OnFullscreenChanged);
         qualityDropdown.onValueChanged.AddListener(OnQualityChanged);
-
-        // Init UI from data
-        SyncUIFromSettings();
-
-        // Default tab
-        ShowTab(SettingsTab.Audio);
     }
 
-    public override void OnPopped()
+    private void UnbindUIEvents()
     {
+        // Using RemoveAllListeners on tab buttons is OK here because these buttons
+        // are owned by this window instance.
         tabAudioButton.onClick.RemoveAllListeners();
         tabVideoButton.onClick.RemoveAllListeners();
+        tabControlsButton.onClick.RemoveAllListeners();
+
         backButton.onClick.RemoveListener(Back);
         applyButton.onClick.RemoveListener(Apply);
         cancelButton.onClick.RemoveListener(Cancel);
@@ -131,33 +194,22 @@ public class SettingsWindow : UIWindow
         resolutionDropdown.onValueChanged.RemoveListener(OnResolutionChanged);
         fullscreenToggle.onValueChanged.RemoveListener(OnFullscreenChanged);
         qualityDropdown.onValueChanged.RemoveListener(OnQualityChanged);
-
-        if (_pauseToken != null) { _pause.Release(_pauseToken); _pauseToken = null; }
-        if (_inputToken != null) { _inputMode.Release(_inputToken); _inputToken = null; }
     }
 
+    // -----------------------------
+    // Tabs
+    // -----------------------------
     private void ShowTab(SettingsTab tab)
     {
-        switch(tab)
-        {
-            case SettingsTab.Audio:
-                audioPanel.SetActive(true);
-                videoPanel.SetActive(false);
-                controlsPanel.SetActive(false);
-                break;
-            case SettingsTab.Video:
-                audioPanel.SetActive(false);
-                videoPanel.SetActive(true);
-                controlsPanel.SetActive(false);
-                break;
-            case SettingsTab.Controls:
-                audioPanel.SetActive(false);
-                videoPanel.SetActive(false);
-                controlsPanel.SetActive(true);
-                break;
-        }
+        // Simple tab switch by toggling panels.
+        audioPanel.SetActive(tab == SettingsTab.Audio);
+        videoPanel.SetActive(tab == SettingsTab.Video);
+        controlsPanel.SetActive(tab == SettingsTab.Controls);
     }
 
+    // -----------------------------
+    // UI sync
+    // -----------------------------
     private void SyncUIFromSettings()
     {
         _ignoreEvents = true;
@@ -174,19 +226,21 @@ public class SettingsWindow : UIWindow
         var v = _settings.Data.video;
         fullscreenToggle.SetIsOnWithoutNotify(v.fullscreen);
 
-        // resolution dropdown: find best match
+        // Resolution dropdown: pick best match
         int resIndex = FindResolutionIndex(v.width, v.height);
         if (resIndex < 0) resIndex = 0;
         resolutionDropdown.SetValueWithoutNotify(resIndex);
 
-        // quality dropdown
+        // Quality dropdown
         int q = Mathf.Clamp(v.qualityIndex, 0, Mathf.Max(0, qualityDropdown.options.Count - 1));
         qualityDropdown.SetValueWithoutNotify(q);
 
         _ignoreEvents = false;
     }
 
-    // -------- Audio handlers --------
+    // -----------------------------
+    // Audio handlers (preview apply)
+    // -----------------------------
     private void OnMasterChanged(float v)
     {
         if (_ignoreEvents) return;
@@ -235,7 +289,9 @@ public class SettingsWindow : UIWindow
         _settings.ApplyAll();
     }
 
-    // -------- Video handlers --------
+    // -----------------------------
+    // Video handlers (preview apply + safe revert)
+    // -----------------------------
     private void OnResolutionChanged(int index)
     {
         if (_ignoreEvents) return;
@@ -273,9 +329,14 @@ public class SettingsWindow : UIWindow
         _settings.ApplyAll();
     }
 
+    /// <summary>
+    /// Opens a "Keep changes?" dialog once per preview session.
+    /// If user does not confirm within timeout, we revert to the last confirmed video state.
+    /// </summary>
     private void BeginVideoPreview()
     {
-        // 已经弹过确认框，就不重复弹；用户继续改动也不会开多个
+        // If the confirm dialog is already open, don't spawn another one.
+        // Continued adjustments will still be preview-applied immediately.
         if (_videoConfirmOpen) return;
 
         _videoConfirmOpen = true;
@@ -287,15 +348,17 @@ public class SettingsWindow : UIWindow
             cancelText: "Revert",
             onConfirm: () =>
             {
-                // Keep：更新“已确认”
+                // User confirms the current video settings as "safe".
                 _confirmedVideoJson = JsonUtility.ToJson(_settings.Data.video);
                 _videoConfirmOpen = false;
+                _toast.Show("Display changed", 2f);
             },
             onCancel: () =>
             {
-                // Revert（或超时）：回滚到已确认
+                // User cancels OR timeout happens -> revert to last confirmed video settings.
                 ApplyConfirmedVideoSnapshot();
                 _videoConfirmOpen = false;
+                _toast.Show("Display reverted", 2f);
             },
             timeoutSeconds: 10f,
             timeoutAsCancel: true
@@ -309,21 +372,23 @@ public class SettingsWindow : UIWindow
         var v = JsonUtility.FromJson<ZXTemplate.Settings.VideoSettings>(_confirmedVideoJson);
         if (v == null) return;
 
-        // 只回滚 video，不影响 audio/controls
+        // Only revert video (audio/controls remain as-is).
         _settings.Data.video = v;
 
-        // 应用并刷新 UI
+        // Apply and refresh UI to reflect the reverted state.
         _settings.ApplyAll();
-        SyncUIFromSettings(); // 你已有的方法，里面 _ignoreEvents 会保护
+        SyncUIFromSettings();
     }
 
-    // -------- Dropdown building --------
+    // -----------------------------
+    // Dropdown building
+    // -----------------------------
     private void BuildResolutionOptions()
     {
         _resOptions.Clear();
         resolutionDropdown.ClearOptions();
 
-        // 用系统支持分辨率去重（只保留 w×h）
+        // Deduplicate by width x height.
         var set = new HashSet<(int, int)>();
         var list = new List<(int w, int h)>();
 
@@ -334,7 +399,7 @@ public class SettingsWindow : UIWindow
                 list.Add(key);
         }
 
-        // 如果拿不到（某些平台/编辑器情况），至少给几个常用
+        // Fallback list for platforms/editors where resolutions are unavailable.
         if (list.Count == 0)
         {
             list.Add((1920, 1080));
@@ -342,17 +407,12 @@ public class SettingsWindow : UIWindow
             list.Add((1280, 720));
         }
 
-        // 排序：从小到大
-        list.Sort((a, b) =>
-        {
-            int pa = a.w * a.h;
-            int pb = b.w * b.h;
-            return pa.CompareTo(pb);
-        });
+        // Sort by pixel count (small -> large).
+        list.Sort((a, b) => (a.w * a.h).CompareTo(b.w * b.h));
 
         _resOptions.AddRange(list);
 
-        var options = new List<string>();
+        var options = new List<string>(_resOptions.Count);
         for (int i = 0; i < _resOptions.Count; i++)
             options.Add($"{_resOptions[i].w} x {_resOptions[i].h}");
 
@@ -369,31 +429,41 @@ public class SettingsWindow : UIWindow
     private void BuildQualityOptions()
     {
         qualityDropdown.ClearOptions();
+
         var names = QualitySettings.names;
         var options = new List<string>(names.Length);
         for (int i = 0; i < names.Length; i++)
             options.Add(names[i]);
+
         qualityDropdown.AddOptions(options);
     }
 
+    // -----------------------------
+    // Common actions
+    // -----------------------------
     private void Back()
     {
+        // Back behaves like Cancel, then closes the window.
         Cancel();
         ServiceContainer.Get<IUIService>().Pop();
     }
 
     private void Apply()
     {
+        // Persist current settings to disk.
+        // Note: During preview, MarkDirty() has already been called by UI handlers.
         _settings.MarkDirty();
         _settings.Save();
-        
+
+        // Update snapshot baseline so Cancel won't revert applied changes.
         _snapshotJson = _settings.ExportJsonSnapshot();
 
-        ServiceContainer.Get<IToastService>().Show("Settings applied", 1.5f);
+        _toast.Show("Settings applied", 1.5f);
     }
 
     private void Cancel()
     {
+        // Restore the snapshot captured when the window was opened (no save).
         _settings.ImportJsonSnapshot(_snapshotJson, false);
         SyncUIFromSettings();
     }
