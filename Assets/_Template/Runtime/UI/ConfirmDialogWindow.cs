@@ -92,12 +92,14 @@ namespace ZXTemplate.UI
         private void Confirm()
         {
             _onConfirm?.Invoke();
+            ServiceContainer.Get<IToastService>().Show("Display changed", 2f);
             CloseSelf();
         }
 
         private void Cancel()
         {
             _onCancel?.Invoke();
+            ServiceContainer.Get<IToastService>().Show("Display reverted", 2f);
             CloseSelf();
         }
 

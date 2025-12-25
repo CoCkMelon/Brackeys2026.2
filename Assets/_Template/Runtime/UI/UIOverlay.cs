@@ -1,26 +1,42 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ZXTemplate.UI
 {
     public class UIOverlay : MonoBehaviour
     {
-        private UIWindow _current;
+        private readonly Dictionary<string, UIWindow> _channels = new();
 
-        public UIWindow Show(UIWindow prefab)
+        public UIWindow Show(string channel, UIWindow prefab)
         {
-            Clear();
-            _current = Instantiate(prefab, transform);
-            _current.OnPushed();
-            return _current;
+            if (string.IsNullOrEmpty(channel)) channel = "Default";
+            Clear(channel);
+
+            var inst = Instantiate(prefab, transform);
+            inst.OnPushed();
+            _channels[channel] = inst;
+            return inst;
         }
 
-        public void Clear()
+        public void Clear(string channel = "Default")
         {
-            if (_current == null) return;
+            if (string.IsNullOrEmpty(channel)) channel = "Default";
+            if (!_channels.TryGetValue(channel, out var win) || win == null) return;
 
-            _current.OnPopped();
-            Destroy(_current.gameObject);
-            _current = null;
+            win.OnPopped();
+            Destroy(win.gameObject);
+            _channels.Remove(channel);
+        }
+
+        public void ClearAll()
+        {
+            foreach (var kv in _channels)
+            {
+                if (kv.Value == null) continue;
+                kv.Value.OnPopped();
+                Destroy(kv.Value.gameObject);
+            }
+            _channels.Clear();
         }
     }
 }

@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using ZXTemplate.Core;
 using ZXTemplate.Input;
 using ZXTemplate.Settings;
+using ZXTemplate.UI;
 
 public class RebindActionRow : MonoBehaviour
 {
@@ -111,6 +112,8 @@ public class RebindActionRow : MonoBehaviour
             });
 
         _op.Start();
+
+        ServiceContainer.Get<IToastService>().Show("Rebind complete", 1.5f);
     }
 
     private void CleanupAfterRebind(InputAction action)

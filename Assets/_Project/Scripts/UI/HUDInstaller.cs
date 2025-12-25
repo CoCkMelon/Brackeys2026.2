@@ -8,7 +8,7 @@ public class HUDInstaller : MonoBehaviour
 
     private void Start()
     {
-        ServiceContainer.Get<IUIService>().ShowOverlay(hudPrefab);
+        ServiceContainer.Get<IUIService>().ShowOverlay("HUD", hudPrefab);
     }
 
     private void OnDestroy()

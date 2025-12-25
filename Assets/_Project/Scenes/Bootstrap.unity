@@ -151,6 +151,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ZXTemplate.Core.Bootstrapper
   uiRootPrefab: {fileID: 8112876708350120527, guid: 159e45465445b35458ef278cc641175b, type: 3}
   confirmDialogPrefab: {fileID: 837345214551294283, guid: 85d042a2b9cb7374e8a195d35d0e1839, type: 3}
+  toastPrefab: {fileID: 7060589593290490374, guid: 862a9344822474148afb5aad9ea9af43, type: 3}
   inputActions: {fileID: -944628639613478452, guid: be17638b4853c6f47b5918687247155e, type: 3}
   audioMixer: {fileID: 24100000, guid: 12ede5f9bed9ed949937ec67da3df365, type: 2}
   audioLibrary: {fileID: 11400000, guid: 8841fe3b2f6152f4fa40e45624f801df, type: 2}

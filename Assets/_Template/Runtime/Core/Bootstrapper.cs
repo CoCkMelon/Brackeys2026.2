@@ -18,6 +18,8 @@ namespace ZXTemplate.Core
         [Header("UI")]
         [SerializeField] private UIRoot uiRootPrefab;
         [SerializeField] private ConfirmDialogWindow confirmDialogPrefab;
+        [SerializeField] private ToastView toastPrefab;
+
 
         [Header("Input")]
         [SerializeField] private InputActionAsset inputActions;
@@ -51,6 +53,8 @@ namespace ZXTemplate.Core
             var confirmService = new ConfirmService(uiService, confirmDialogPrefab);
             ServiceContainer.Register<IConfirmService>(confirmService);
 
+            var toastService = new ToastService(uiService, toastPrefab);
+            ServiceContainer.Register<IToastService>(toastService);
 
             // 2) Input
             var inputService = new InputService(inputActions);

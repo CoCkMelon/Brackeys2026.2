@@ -388,6 +388,8 @@ public class SettingsWindow : UIWindow
         _settings.Save();
         
         _snapshotJson = _settings.ExportJsonSnapshot();
+
+        ServiceContainer.Get<IToastService>().Show("Settings applied", 1.5f);
     }
 
     private void Cancel()
