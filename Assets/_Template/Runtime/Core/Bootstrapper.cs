@@ -33,6 +33,8 @@ namespace ZXTemplate.Core
 
         private void Awake()
         {
+            //Debug.Log($"[Bootstrapper] Awake on {gameObject.scene.name} | inputActions={(inputActions ? inputActions.name : "NULL")} | instanceID={GetInstanceID()}");
+
             // 防止重复 Bootstrap
             var all = FindObjectsByType<Bootstrapper>(FindObjectsSortMode.None);
             if (all.Length > 1)
@@ -59,6 +61,7 @@ namespace ZXTemplate.Core
             // 2) Input
             var inputService = new InputService(inputActions);
             ServiceContainer.Register<IInputService>(inputService);
+            //Debug.Log($"[Bootstrapper] Registered IInputService = {inputService.GetType().FullName} id={inputService.GetHashCode()} actions={(inputService.Actions ? inputService.Actions.name : "NULL")}");
 
             // Input Mode Stack（你上一阶段做的）
             var inputModeService = new InputModeService(inputService);
@@ -106,6 +109,10 @@ namespace ZXTemplate.Core
 
             // 10) 启动时应用一次设置（重要：一进游戏就按 settings 生效）
             settingsService.ApplyAll();
+
+            //Debug.Log($"[ASM] Bootstrapper ServiceContainer = {typeof(ZXTemplate.Core.ServiceContainer).Assembly.FullName}");
+            //Debug.Log($"[ASM] Bootstrapper IInputService    = {typeof(ZXTemplate.Input.IInputService).Assembly.FullName}");
+
 
         }
 
