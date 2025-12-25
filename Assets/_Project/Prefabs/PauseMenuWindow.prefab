@@ -366,7 +366,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PauseMenuWindow
   resumeButton: {fileID: 5991568734346003458}
   settingsButton: {fileID: 4256133930841013483}
-  settingsWindowPrefab: {fileID: 278558976698828419, guid: 46848aea1f2d73d46b69dafb407156b7, type: 3}
+  settingsWindowPrefab: {fileID: 278558976698828419, guid: 6b141bde66f559843b7a292e3e6f2675, type: 3}
 --- !u!1 &5487581740428250780
 GameObject:
   m_ObjectHideFlags: 0

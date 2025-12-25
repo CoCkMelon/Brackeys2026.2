@@ -7,16 +7,27 @@ using ZXTemplate.Input;
 using ZXTemplate.Settings;
 using ZXTemplate.UI;
 
+public enum SettingsTab
+{
+    Audio,
+    Video,
+    Controls
+}
+
 public class SettingsWindow : UIWindow
 {
     [Header("Tabs")]
     [SerializeField] private Button tabAudioButton;
     [SerializeField] private Button tabVideoButton;
+    [SerializeField] private Button tabControlsButton;
     [SerializeField] private GameObject audioPanel;
     [SerializeField] private GameObject videoPanel;
+    [SerializeField] private GameObject controlsPanel;
 
     [Header("Common")]
-    [SerializeField] private Button closeButton;
+    [SerializeField] private Button backButton;
+    [SerializeField] private Button applyButton;
+    [SerializeField] private Button cancelButton;
 
     [Header("Audio UI")]
     [SerializeField] private Slider masterSlider;
@@ -39,6 +50,7 @@ public class SettingsWindow : UIWindow
     private ISettingsService _settings;
     private IInputModeService _inputMode;
     private IPauseService _pause;
+    private string _snapshotJson;
 
     private object _inputToken;
     private object _pauseToken;
@@ -56,12 +68,18 @@ public class SettingsWindow : UIWindow
         if (pauseGameOnOpen)
             _pauseToken = _pause.Acquire("SettingsWindow");
 
-        // Tabs
-        tabAudioButton.onClick.AddListener(() => ShowTab(true));
-        tabVideoButton.onClick.AddListener(() => ShowTab(false));
+        // save snapshot
+        _snapshotJson = _settings.ExportJsonSnapshot();
 
-        // Close
-        closeButton.onClick.AddListener(Close);
+        // Tabs
+        tabAudioButton.onClick.AddListener(() => ShowTab(SettingsTab.Audio));
+        tabVideoButton.onClick.AddListener(() => ShowTab(SettingsTab.Video));
+        tabControlsButton.onClick.AddListener(() => ShowTab(SettingsTab.Controls));
+
+        // Common
+        backButton.onClick.AddListener(Back);
+        applyButton.onClick.AddListener(Apply);
+        cancelButton.onClick.AddListener(Cancel);
 
         // Prepare Video dropdowns
         BuildResolutionOptions();
@@ -84,14 +102,16 @@ public class SettingsWindow : UIWindow
         SyncUIFromSettings();
 
         // Default tab
-        ShowTab(true);
+        ShowTab(SettingsTab.Audio);
     }
 
     public override void OnPopped()
     {
         tabAudioButton.onClick.RemoveAllListeners();
         tabVideoButton.onClick.RemoveAllListeners();
-        closeButton.onClick.RemoveListener(Close);
+        backButton.onClick.RemoveListener(Back);
+        applyButton.onClick.RemoveListener(Apply);
+        cancelButton.onClick.RemoveListener(Cancel);
 
         masterSlider.onValueChanged.RemoveListener(OnMasterChanged);
         bgmSlider.onValueChanged.RemoveListener(OnBgmChanged);
@@ -105,17 +125,30 @@ public class SettingsWindow : UIWindow
         fullscreenToggle.onValueChanged.RemoveListener(OnFullscreenChanged);
         qualityDropdown.onValueChanged.RemoveListener(OnQualityChanged);
 
-        // 关窗时保存一次（SaveManager 也会兜底）
-        _settings.Save();
-
         if (_pauseToken != null) { _pause.Release(_pauseToken); _pauseToken = null; }
         if (_inputToken != null) { _inputMode.Release(_inputToken); _inputToken = null; }
     }
 
-    private void ShowTab(bool audio)
+    private void ShowTab(SettingsTab tab)
     {
-        audioPanel.SetActive(audio);
-        videoPanel.SetActive(!audio);
+        switch(tab)
+        {
+            case SettingsTab.Audio:
+                audioPanel.SetActive(true);
+                videoPanel.SetActive(false);
+                controlsPanel.SetActive(false);
+                break;
+            case SettingsTab.Video:
+                audioPanel.SetActive(false);
+                videoPanel.SetActive(true);
+                controlsPanel.SetActive(false);
+                break;
+            case SettingsTab.Controls:
+                audioPanel.SetActive(false);
+                videoPanel.SetActive(false);
+                controlsPanel.SetActive(true);
+                break;
+        }
     }
 
     private void SyncUIFromSettings()
@@ -284,8 +317,23 @@ public class SettingsWindow : UIWindow
         qualityDropdown.AddOptions(options);
     }
 
-    private void Close()
+    private void Back()
     {
+        Cancel();
         ServiceContainer.Get<IUIService>().Pop();
+    }
+
+    private void Apply()
+    {
+        _settings.MarkDirty();
+        _settings.Save();
+        
+        _snapshotJson = _settings.ExportJsonSnapshot();
+    }
+
+    private void Cancel()
+    {
+        _settings.ImportJsonSnapshot(_snapshotJson, false);
+        SyncUIFromSettings();
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 using ZXTemplate.Save;
 
 namespace ZXTemplate.Settings
@@ -51,7 +52,7 @@ namespace ZXTemplate.Settings
 
             SettingsApplierAudio.Apply(Data.audio);
             SettingsApplierVideo.Apply(Data.video);
-            // language/controls: 你加模块时补上
+            SettingsApplierControls.Apply(Data.controls);
         }
 
         public void Save()
@@ -66,6 +67,26 @@ namespace ZXTemplate.Settings
         {
             Data = new SettingsData();
             _save.Save(SettingsKeys.Main, Data);
+            ApplyAll();
+            OnChanged?.Invoke();
+        }
+
+        public string ExportJsonSnapshot()
+        {
+            return JsonUtility.ToJson(Data);
+        }
+
+        public void ImportJsonSnapshot(string json, bool markDirty)
+        {
+            if (string.IsNullOrEmpty(json)) return;
+
+            var loaded = JsonUtility.FromJson<SettingsData>(json);
+            if (loaded == null) return;
+
+            loaded.Clamp();
+            Data = loaded;
+
+            _dirty = markDirty;
             ApplyAll();
             OnChanged?.Invoke();
         }

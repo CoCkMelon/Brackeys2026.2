@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace ZXTemplate.Input
 {
@@ -7,6 +8,7 @@ namespace ZXTemplate.Input
     {
         Vector2 Move { get; }
         event Action OnPause;
+        InputActionAsset Actions { get; }
         void EnableGameplay();
         void EnableUI();
     }

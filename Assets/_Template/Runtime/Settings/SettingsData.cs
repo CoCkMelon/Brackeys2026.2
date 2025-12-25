@@ -13,6 +13,7 @@ namespace ZXTemplate.Settings
 
         public AudioSettings audio = new();
         public VideoSettings video = new();
+        public ControlsSettings controls = new();
 
         public void Clamp()
         {
@@ -60,5 +61,11 @@ namespace ZXTemplate.Settings
             var maxQ = Mathf.Max(0, QualitySettings.names.Length - 1);
             qualityIndex = Mathf.Clamp(qualityIndex, 0, maxQ);
         }
+    }
+
+    [Serializable]
+    public class ControlsSettings
+    {
+        public string bindingOverridesJson = "";
     }
 }

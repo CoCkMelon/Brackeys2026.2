@@ -95,22 +95,22 @@
                 },
                 {
                     "name": "",
-                    "id": "cf77e51e-943c-461b-84d6-a4dc70e49415",
-                    "path": "<Gamepad>/buttonEast",
+                    "id": "bf5f549e-7c34-4c6a-aba9-dee7c25f5428",
+                    "path": "<Keyboard>/c",
                     "interactions": "",
                     "processors": "",
-                    "groups": "Gamepad",
+                    "groups": "Keyboard&Mouse",
                     "action": "Crouch",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "bf5f549e-7c34-4c6a-aba9-dee7c25f5428",
-                    "path": "<Keyboard>/c",
+                    "id": "cf77e51e-943c-461b-84d6-a4dc70e49415",
+                    "path": "<Gamepad>/buttonEast",
                     "interactions": "",
                     "processors": "",
-                    "groups": "Keyboard&Mouse",
+                    "groups": "Gamepad",
                     "action": "Crouch",
                     "isComposite": false,
                     "isPartOfComposite": false
