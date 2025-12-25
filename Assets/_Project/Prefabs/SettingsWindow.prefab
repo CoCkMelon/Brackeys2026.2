@@ -1015,6 +1015,11 @@ MonoBehaviour:
   resolutionDropdown: {fileID: 3398092639858429535}
   fullscreenToggle: {fileID: 1280060530415675209}
   qualityDropdown: {fileID: 7032671907167615687}
+  videoConfirmPanel: {fileID: 0}
+  videoConfirmText: {fileID: 0}
+  videoKeepButton: {fileID: 0}
+  videoRevertButton: {fileID: 0}
+  videoConfirmTimeout: 10
   pauseGameOnOpen: 0
 --- !u!1 &1252724211107245619
 GameObject:

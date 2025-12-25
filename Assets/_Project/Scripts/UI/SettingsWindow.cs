@@ -51,6 +51,9 @@ public class SettingsWindow : UIWindow
     private IInputModeService _inputMode;
     private IPauseService _pause;
     private string _snapshotJson;
+    private IConfirmService _confirm;
+    private string _confirmedVideoJson;
+    private bool _videoConfirmOpen;
 
     private object _inputToken;
     private object _pauseToken;
@@ -63,6 +66,10 @@ public class SettingsWindow : UIWindow
         _settings = ServiceContainer.Get<ISettingsService>();
         _inputMode = ServiceContainer.Get<IInputModeService>();
         _pause = ServiceContainer.Get<IPauseService>();
+
+        _confirm = ServiceContainer.Get<ZXTemplate.UI.IConfirmService>();
+        _confirmedVideoJson = JsonUtility.ToJson(_settings.Data.video);
+        _videoConfirmOpen = false;
 
         _inputToken = _inputMode.Acquire(InputMode.UI, "SettingsWindow");
         if (pauseGameOnOpen)
@@ -234,6 +241,8 @@ public class SettingsWindow : UIWindow
         if (_ignoreEvents) return;
         if (index < 0 || index >= _resOptions.Count) return;
 
+        BeginVideoPreview();
+
         var (w, h) = _resOptions[index];
         _settings.Data.video.width = w;
         _settings.Data.video.height = h;
@@ -245,6 +254,9 @@ public class SettingsWindow : UIWindow
     private void OnFullscreenChanged(bool on)
     {
         if (_ignoreEvents) return;
+
+        BeginVideoPreview();
+
         _settings.Data.video.fullscreen = on;
         _settings.MarkDirty();
         _settings.ApplyAll();
@@ -253,9 +265,56 @@ public class SettingsWindow : UIWindow
     private void OnQualityChanged(int index)
     {
         if (_ignoreEvents) return;
+
+        BeginVideoPreview();
+
         _settings.Data.video.qualityIndex = index;
         _settings.MarkDirty();
         _settings.ApplyAll();
+    }
+
+    private void BeginVideoPreview()
+    {
+        // 已经弹过确认框，就不重复弹；用户继续改动也不会开多个
+        if (_videoConfirmOpen) return;
+
+        _videoConfirmOpen = true;
+
+        _confirm.Show(
+            title: "Display Settings",
+            message: "Keep changes?",
+            confirmText: "Keep",
+            cancelText: "Revert",
+            onConfirm: () =>
+            {
+                // Keep：更新“已确认”
+                _confirmedVideoJson = JsonUtility.ToJson(_settings.Data.video);
+                _videoConfirmOpen = false;
+            },
+            onCancel: () =>
+            {
+                // Revert（或超时）：回滚到已确认
+                ApplyConfirmedVideoSnapshot();
+                _videoConfirmOpen = false;
+            },
+            timeoutSeconds: 10f,
+            timeoutAsCancel: true
+        );
+    }
+
+    private void ApplyConfirmedVideoSnapshot()
+    {
+        if (string.IsNullOrEmpty(_confirmedVideoJson)) return;
+
+        var v = JsonUtility.FromJson<ZXTemplate.Settings.VideoSettings>(_confirmedVideoJson);
+        if (v == null) return;
+
+        // 只回滚 video，不影响 audio/controls
+        _settings.Data.video = v;
+
+        // 应用并刷新 UI
+        _settings.ApplyAll();
+        SyncUIFromSettings(); // 你已有的方法，里面 _ignoreEvents 会保护
     }
 
     // -------- Dropdown building --------
