@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using ZXTemplate.Core;
 using ZXTemplate.Input;
+using ZXTemplate.Scenes;
 using ZXTemplate.UI;
 
 /// <summary>
@@ -23,8 +24,10 @@ public class PauseMenuWindow : UIWindow
 {
     [SerializeField] private Button resumeButton;
     [SerializeField] private Button settingsButton;
+    [SerializeField] private Button quitButton;
     [SerializeField] private SettingsWindow settingsWindowPrefab;
 
+    private ISceneService _scene;
     private IPauseService _pause;
     private IInputModeService _inputMode;
 
@@ -35,6 +38,7 @@ public class PauseMenuWindow : UIWindow
     {
         _pause = ServiceContainer.Get<IPauseService>();
         _inputMode = ServiceContainer.Get<IInputModeService>();
+        _scene = ServiceContainer.Get<ISceneService>();
 
         // Acquire pause token (token-based pause prevents "pause ownership" bugs).
         _pauseToken = _pause.Acquire("PauseMenu");
@@ -44,12 +48,14 @@ public class PauseMenuWindow : UIWindow
 
         resumeButton.onClick.AddListener(Resume);
         settingsButton.onClick.AddListener(OpenSettings);
+        quitButton.onClick.AddListener(Quit);
     }
 
     public override void OnPopped()
     {
         resumeButton.onClick.RemoveListener(Resume);
         settingsButton.onClick.RemoveListener(OpenSettings);
+        quitButton.onClick.RemoveListener(Quit);
 
         // Release tokens (safe even if other systems still hold tokens).
         if (_pauseToken != null)
@@ -75,5 +81,11 @@ public class PauseMenuWindow : UIWindow
     {
         // SettingsWindow will acquire its own UI/pause tokens based on its configuration.
         ServiceContainer.Get<IUIService>().Push(settingsWindowPrefab);
+    }
+
+    private async void Quit()
+    {
+        var scene = ServiceContainer.Get<ISceneService>();
+        await scene.LoadSceneAsync("MainMenu");
     }
 }
