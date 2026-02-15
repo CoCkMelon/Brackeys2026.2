@@ -66,6 +66,12 @@ sysinfo.txt
 
 # Crashlytics generated file
 crashlytics-build.properties
+*.blob
+
+ios_build/
+ios_build*/
+**/.DS_Store
+build_**/
 
 # Packed Addressables
 /[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
@@ -73,3 +79,18 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Mono-specific patterns
+**/.vscode/
+mono_crash*
+Assets/App/Data/SaveData.json
+Assets/App/Data/MoneyData.json
+
+# Backups
+*~
+*.backup
+*.blend1
+*.swp
+*.bak
+
+.fuse_*
