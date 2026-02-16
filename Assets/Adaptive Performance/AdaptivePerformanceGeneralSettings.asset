@@ -76,5 +76,5 @@ MonoBehaviour:
   Values:
   - {fileID: -7453994661329639515}
   - {fileID: -8445482520279125118}
-  m_EnableAdaptivePerformance: 1
+  m_EnableAdaptivePerformance: 0
   m_Version: 6000.3
